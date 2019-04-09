@@ -1,0 +1,5 @@
+; $Id$
+name = "Setup Kegiatan"
+description = "Setup Kegiatan"
+;dependencies[] =
+core = 6.x

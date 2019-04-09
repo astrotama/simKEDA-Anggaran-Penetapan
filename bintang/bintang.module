@@ -1,0 +1,302 @@
+<?php
+ 
+/**
+ * For more informaiton about the different API controls available see:
+ * http://api.drupal.org/api/drupal/developer--topics--forms_api_reference.html/6
+ */
+ 
+function bintang_menu() {
+    $items['bintang'] = array(
+        'title' => 'Kegitaan Bintang',
+        'page callback' => 'drupal_get_form',
+        'page arguments' => array('bintang_form'),
+        'access callback' => TRUE,
+    );
+    return $items;
+}
+ 
+/**
+ * This is form containing every form element type available.
+ */
+function bintang_form() {
+
+    $referer = $_SERVER['HTTP_REFERER'];
+	
+	drupal_add_css('files/css/kegiatancam.css');
+	//drupal_add_js('files/js/kegiatanpad.js');
+
+	$kodekeg = arg(1);
+	
+
+	$title = 'Kegiatan Bintang';
+	$sql = sprintf('select kegiatan,total,bintang from {kegiatanskpd} where kodekeg=\'%s\'', $kodekeg);
+	$res = db_query($sql);
+	if ($res) {
+		$data = db_fetch_object($res);
+		if ($data) {  		
+			$title = $data->kegiatan;
+			$kegiatan = $data->kegiatan;
+			$total = $data->total;
+			$bintang = $data->bintang;
+		}
+	}
+		
+	
+	//$title =l($title, 'apbd/pendapatan/' . $kodeuk, array('html'=>true));
+	drupal_set_title($title);
+	drupal_set_html_head('<style>label{font-weight: bold; display: block; width: 200px; float: left;}</style>');
+    $disabled = FALSE;
+
+	
+    
+	$form['kodekeg']= array( 
+		'#type'         => 'hidden', 
+		'#default_value'=> $kodekeg, 
+	); 	
+		
+	$form['kegiatanx']= array(
+		'#type'         => 'textfield', 
+		'#title'        => 'Kegiatan', 
+		'#default_value'=> $kegiatan, 
+	); 
+
+	
+	$form['total']= array(
+		'#type'         => 'textfield', 
+		'#title'        => 'Anggaran',
+		'#attributes'	=> array('style' => 'text-align: right'),
+		//'#disabled'     => true, 
+		//'#maxlength'    => 60, 
+		'#size'         => 30, 
+		//'#required'     => !$disabled, 
+		//'#disabled'     => $disabled, 
+		'#default_value'=> apbd_fn($total), 
+	); 
+	$form['bintang'] = array(
+		'#type' => 'checkbox',
+		'#title'        => 'Bintang',
+		'#default_value' => $bintang,
+	);	
+
+	$form['ss2'] = array (
+		'#type' => 'item',
+		'#value' => "<div style='clear:both;'></div>",
+	);	
+	
+	//REKENING
+	$where = sprintf(" where kodekeg='%s'", db_escape_string($kodekeg));
+    $sql = 'select kodekeg,kodero,uraian,jumlah,bintang from {anggperkeg}' . $where . ' order by kodero';
+	//drupal_set_message($sql);
+	$resrek = db_query($sql);
+	$weight = 0;
+	$rows= array();
+	if ($resrek) {
+		//drupal_set_message('res ok');
+		while ($data = db_fetch_object($resrek)) {
+			$weight += 1;
+			
+			//drupal_set_message($data->kodero);
+			
+			$subdetil = l('Detil', 'bintangrek/' . $kodekeg . '/' . $data->kodero , array('html' =>TRUE));			
+			$rows[] = array (
+							'id' => $weight,
+							'space' => '',
+							'bintang' => $data->bintang,
+							'e_bintang' => $data->bintang,
+							'kodero' => $data->kodero,
+							'uraian' => $data->uraian,
+							'jumlah' => $data->jumlah,
+							'subdetil' => $subdetil,
+							'weight' => $weight,
+						);
+		}
+	}
+	
+    // Tabledrag element
+    foreach ($rows as $row) {
+
+        $form['tabledragrows'][$row['id']]['kodero_' . $row['id']] = array(
+            '#type' => 'hidden',
+            '#default_value' => $row['kodero'],
+        );
+		
+        $form['tabledragrows'][$row['id']]['space_' . $row['id']] = array(
+            '#type' => 'markup',
+            '#default_value' => '',
+            '#size' => 10,
+        );
+
+        $form['tabledragrows'][$row['id']]['bintang_' . $row['id']] = array(
+            '#type' => 'checkbox',
+            '#default_value' => $row['bintang'],
+            '#size' => 10,
+        );
+        $form['tabledragrows'][$row['id']]['e_bintang_' . $row['id']] = array(
+            '#type' => 'hidden',
+            '#default_value' => $row['bintang'],
+        );
+
+		
+        $form['tabledragrows'][$row['id']]['koderox_' . $row['id']] = array(
+            '#type' => 'markup',
+            '#value' => $row['kodero'],
+        );
+        $form['tabledragrows'][$row['id']]['uraian_' . $row['id']] = array(
+            '#type' => 'markup',
+            '#value' => $row['uraian'],
+        );
+        $form['tabledragrows'][$row['id']]['jumlah_' . $row['id']] = array(
+            '#type' => 'markup',
+            '#value' => '<p align="right">' . apbd_fn($row['jumlah'] . '</p>'),
+        );
+
+		
+		//'#value' => "<span>$data->program (Kode: $data->kodepro)</span>",
+        $form['tabledragrows'][$row['id']]['subdetil_' . $row['id']] = array(
+            '#type' => 'markup',
+            //'#default_value' => $row['subdetil'],
+			//'#value' => "<span>Hai</span>",
+			'#value' => $row['subdetil'],
+            '#size' => 5,
+        );
+		
+        // the weight form element.
+        $form['tabledragrows'][$row['id']]['weight_' . $row['id']] = array(
+            '#type' => 'weight',
+            '#delta' => 50,
+            '#default_value' => $row['weight'],
+            '#attributes' => array('class' => 'weight'),
+        );
+    }
+ 
+	$form['maxdetil']= array(
+		'#type'         => 'hidden', 
+		'#default_value'=> $weight, 
+	); 
+
+	$form['referer']= array(
+		'#type'         => 'hidden', 
+		'#default_value'=> $referer, 
+	); 	
+	$form['submit'] = array(
+		'#type' => 'submit',
+		'#suffix' => "&nbsp;<a href='". $referer . "' class='btn_blue' style='color: white'>Tutup</a>",
+		'#value' => 'Simpan',
+		//'#weight' => 7,
+	);
+    return $form;
+}
+
+/**
+ * Implements hook_validate() for the bintang_form() form.
+ */
+function bintang_form_validate($form, &$form_state) {
+
+} 
+/**
+ * Implements hook_submit() for the bintang_form() form.
+ */
+function bintang_form_submit($form, &$form_state) {
+    
+	$kodekeg = $form_state['values']['kodekeg'];
+	$bintang = $form_state['values']['bintang'];
+	$referer = $form_state['values']['referer'];
+
+	$sql = 'update {kegiatanskpd} set bintang=\'%s\' where kodekeg=\'%s\'';
+	$res = db_query(db_rewrite_sql($sql), array($bintang, $kodekeg));
+	
+	$maxdetil = $form_state['values']['maxdetil'];	
+	
+	for ($x = 1; $x <= $maxdetil; $x++) 
+	{
+		
+		//Hitung detilnya dulu
+		$bintang = $form_state['values']['bintang_' . $x];
+		$e_bintang = $form_state['values']['e_bintang_' . $x];
+		$kodero = $form_state['values']['kodero_' . $x];
+		
+		if ($bintang != $e_bintang)	{
+			$sql = 'update {anggperkeg} set bintang=\'%s\' where kodekeg=\'%s\' and kodero=\'%s\'';
+			$res = db_query(db_rewrite_sql($sql), array($bintang, $kodekeg, $kodero));
+		}	
+
+	}
+	
+	drupal_goto($referer);  
+	
+}
+ 
+/**
+ * Implementation of hook_theme().
+ */
+function bintang_theme() {
+    return array(
+        'bintang_form' => array(
+            'arguments' => array(
+                'form' => NULL
+            ),
+        ),
+    );
+}
+ 
+/**
+ * Theme for form_element_form. Used to create the tabledrag element and then
+ * render the rest of the form.
+ */
+function theme_bintang_form($form) {
+    $table_rows = array();
+ 
+    if (is_array($form['tabledragrows'])) {
+        //loop through each "row" in the table array
+        foreach ($form['tabledragrows'] as $id => $row) {
+            //we are only interested in numeric keys
+            if (intval($id)) {
+                $this_row = array();
+				
+				//$this_row[] = drupal_render($form['tabledragrows'][$id]['iddetil_' . $id]);
+				$this_row[] = drupal_render($form['tabledragrows'][$id]['space_' . $id]);
+				$this_row[] = drupal_render($form['tabledragrows'][$id]['bintang_' . $id]);
+				$this_row[] = drupal_render($form['tabledragrows'][$id]['koderox_' . $id]);
+				$this_row[] = drupal_render($form['tabledragrows'][$id]['uraian_' . $id]);
+				$this_row[] = drupal_render($form['tabledragrows'][$id]['jumlah_' . $id]);
+				
+				$this_row[] = drupal_render($form['tabledragrows'][$id]['subdetil_' . $id]);
+				
+                //Add the weight field to the row
+                $this_row[] = drupal_render($form['tabledragrows'][$id]['weight_' . $id]);
+ 
+                //Add the row to the array of rows
+                $table_rows[] = array('data' => $this_row);
+            }
+        }
+    }
+ 
+    //Make sure the header count matches the column count
+    //$header = array(
+     //   "Person",
+    //    "Email",
+    //    "Weight"
+    //);
+	$header = array (
+				array('data' => '',  'width'=> '5px'),
+				array('data' => '',  'width'=> '5px'),
+				 array('data' => 'Kode',  'width'=> '10px'),
+				 array('data' => 'Uraian'),
+				 array('data' => 'Anggaran',  'width' => '20px'),
+				 array('data' => '',  'width' => '5px'),
+				 array('data' => 'Weight'),
+				); 
+ 
+    $form['tabledragrows'] = array(
+        '#value' => theme('table', $header, $table_rows, array('id' => 'id'))
+    );
+ 
+    $output = drupal_render($form);
+ 
+    // Call add_tabledrag to add and setup the JavaScript
+    // The key thing here is the first param - the table ID
+    // and the 4th param, the class of the form item which holds the weight
+   drupal_add_tabledrag('id', 'order', 'sibling', 'weight');
+ 
+    return $output;
+}

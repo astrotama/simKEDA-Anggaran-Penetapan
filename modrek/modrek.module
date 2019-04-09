@@ -1,0 +1,676 @@
+<?php
+ 
+/**
+ * For more informaiton about the different API controls available see:
+ * http://api.drupal.org/api/drupal/developer--topics--forms_api_reference.html/6
+ */
+ 
+function modrek_menu() {
+    $items['modrek'] = array(
+        'title' => 'Rekening',
+        'page callback' => 'drupal_get_form',
+        'page arguments' => array('modrek_form'),
+        'access callback' => TRUE,
+    );
+    return $items;
+}
+ 
+/**
+ * This is form containing every form element type available.
+ */
+function modrek_form() {
+	//drupal_add_css('files/css/kegiatancam.css');
+	$aarg=arg(1);
+	$karg=arg(2);
+	
+	if (strlen($aarg)==1) { 
+		if ($aarg=='4')
+			$title = '4. REKENING PENDAPATAN';
+		else if ($aarg=='5')
+			$title = '5. REKENING BELANJA';
+		else if ($aarg=='6')
+			$title = '6. REKENING PEMBIAYAAN';
+		
+	} else if (strlen($aarg)==2) {
+		$sql = sprintf('select uraian from {kelompok} where kodek=\'%s\'', $aarg);
+		$res = db_query($sql);
+		if ($data = db_fetch_object($res)) {
+			$title = $aarg . '. ' . $data->uraian;
+		}
+	} 
+	
+	
+    if(isset($karg) && $karg!=null){
+		$where=sprintf(' where kodej=\'%s\'',$karg);
+
+		$sql = sprintf('select uraian from {jenis} where kodej=\'%s\'', $karg);
+		$res = db_query($sql);
+		if ($data = db_fetch_object($res)) {
+			$title = $karg . '. ' . $data->uraian;
+		}
+		
+	} else {
+		if (strlen($aarg)==1)			
+			$where=sprintf(" where kodeo like '%s%%'",$aarg.'11');
+		else
+			$where=sprintf(" where kodeo like '%s%%'",$aarg.'1');
+	}
+	
+	drupal_set_title($title);
+	
+    $sql = 'select uraian, kodeo from {obyek} ' . $where . 'order by kodeo';
+	
+	$res = db_query($sql);
+	$weight = 0;
+	$rows= array();
+	
+	if ($res) {
+		
+		while ($data = db_fetch_object($res)) {
+			$weight += 1;
+			//drupal_set_message($data->gaji.'+'.$karg.'+'.$aarg);
+			$rows[] = array (
+							'id' => $weight,
+							'kode' => $data->kodeo,
+							'e_kode' => $data->kodeo,
+							'uraian' => $data->uraian,
+							'weight' => $weight,
+						);
+		}
+	}
+	
+	for ($x = 1; $x <= 3; $x++) {
+		$weight += 1;
+
+		$rows[] = array (
+						'id' => $weight,
+						'e_kode' => 'new',
+						'no' => '',
+						'kode' => '',
+						'uraian' => '',
+						'weight' => $weight,
+					);
+	}
+	
+
+	//...............
+	/*
+	if(isset($aarg) && $aarg!=null){
+		$where=sprintf(" where kodek like '%s%%'",$aarg);
+		}
+	else {$where = '';}
+		
+	$sql = 'select uraian,kodej from {jenis}'.$where;
+	
+	//drupal_set_message($sql);
+	$res = db_query($sql);
+	$ind = 0;
+	$kel= array();
+	if ($res) {
+		
+			while ($data = db_fetch_object($res)) {
+				$kel[$data->kodej]=$data->kodej.'-'.$data->uraian;
+				$ind++;
+			}
+	}
+	;
+	//filter
+	$form['formdata']['kelompok']= array(
+		'#type'         => 'select', 
+		'#title'        => 'Jenis',
+		'#options'	=> $kel,
+		'#width'         => 20, 
+		'#default_value'=> $karg, 
+		//'#weight' => 1,
+	);
+	$form['formdata']['tampil'] = array(
+        '#type' => 'submit',
+		'#value' => 'Tampilkan',
+		//'#weight' => 7,
+    );
+	*/
+	
+    // Tabledrag element
+    foreach ($rows as $row) {
+        $form['tabledragrows'][$row['id']]['e_kode_' . $row['id']] = array(
+            '#type' => 'hidden',
+            '#default_value' => $row['e_kode'],
+            '#size' => 10,
+        );
+	
+        $form['tabledragrows'][$row['id']]['kode_' . $row['id']] = array(
+            '#type' => 'textfield',
+            '#default_value' => $row['kode'],
+            '#size' => 5,
+        );
+
+		$form['tabledragrows'][$row['id']]['uraian_' . $row['id']] = array(
+            '#type' => 'textfield',
+            '#default_value' => $row['uraian'],
+            '#size' => 70,
+        );
+		$form['tabledragrows'][$row['id']]['button_' . $row['id']] = array(
+            '#type' => 'submit',
+			'#value' => 'Detil',
+			);
+		if($row['e_kode']!='new')
+		{
+			$ket='<button type="button">Detil</button>';
+		}
+		else{
+			$ket='';
+		}
+		$form['tabledragrows'][$row['id']]['detil_' . $row['id']] = array(
+            '#type' => 'markup',
+			'#value' => '<a href="/modobyek/'.$row['e_kode'].'">'.$ket.'</a>',
+			);
+		
+
+
+        // the weight form element.
+        $form['tabledragrows'][$row['id']]['weight_' . $row['id']] = array(
+            '#type' => 'hidden',
+            '#delta' => 50,
+            '#default_value' => $row['weight'],
+            '#attributes' => array('class' => 'weight'),
+        );
+    }
+ 
+	$form['maxno']= array(
+		'#type'         => 'hidden', 
+		'#title'        => 'kodero', 
+		'#default_value'=> $weight, 
+	); 
+ 
+	 
+	if (isSuperuser()) { 
+		$form['submitnewdetil'] = array (
+			'#type' => 'submit',
+			'#value' => 'Tambah',
+			//'#weight' => 6,
+		);
+		// A submit element
+		$form['submit'] = array(
+			'#type' => 'submit',
+			'#value' => 'Simpan',
+			//'#weight' => 7,
+		);
+	}
+	$form['cetak'] = array(
+        '#type' => 'submit',
+		'#value' => 'Cetak',
+		//'#weight' => 7,
+    );
+ 
+    return $form;
+}
+
+/**
+ * Implements hook_validate() for the modrek_form() form.
+ */
+function modrek_form_validate($form, &$form_state) {
+
+} 
+
+/**
+ * Implements hook_submit() for the modrek_form() form.
+ */
+function modrek_form_submit($form, &$form_state) {
+    
+
+	if ($form_state['clicked_button']['#value'] == $form_state['values']['submitnewdetil']) {
+		$arg1=arg(1);
+		$arg2=arg(2);
+		drupal_goto('modrek/'.$arg1.'/'.$arg2); 
+		
+	} 
+	else if ($form_state['clicked_button']['#value'] == $form_state['values']['tampil']) {
+		$klmpk= $form_state['values']['kelompok'];
+		$arg1=arg(1);
+		$form_state['redirect'] = 'modrek/'.$arg1.'/'.$klmpk;
+		
+	}
+	else if ($form_state['clicked_button']['#value'] == $form_state['values']['cetak']) {
+		/*
+		$arg1=arg(1);
+		$arg2=arg(2);
+		drupal_goto('apbd/laporan/cetrek/'.$arg1.'/'.$arg2);   
+		*/
+		
+		$arg1=arg(1);
+		$arg2=arg(2);
+		//$pdfFile = 'Rekening ' . $arg1 . $arg2 . '.pdf';
+		if (strlen($arg1)==1)
+			$html = genPrintData1($arg1);
+		elseif (strlen($arg1)==2)
+			$html = genPrintData2($arg1);
+		else
+			$html = genPrintData($arg1, $arg2);
+
+		
+	}else if ($form_state['clicked_button']['#value'] == $form_state['values']['submit']){
+
+		$maxno = $form_state['values']['maxno'];
+
+		for ($x = 1; $x <= $maxno; $x++) 
+		{
+			
+			//Read
+			$e_kode = $form_state['values']['e_kode_' . $x];
+			$kode = $form_state['values']['kode_' . $x];
+			$uraian = $form_state['values']['uraian_' . $x];
+			
+
+			if ($kode != '') {
+				
+				//drupal_set_message($bulan);
+				
+				//Simpan detilnya
+				if ($e_kode=='new') {
+					//drupal_set_message($e_no);
+					$kel=arg(2);
+					$sql = 'insert into {obyek} (kodeo, uraian,kodej) values(\'%s\', \'%s\', \'%s\')';        
+					$res = db_query(db_rewrite_sql($sql), array($kode, $uraian,$kel));	
+					$t=$sql;
+				} else {
+					
+					$sql = 'update {obyek} set kodeo=\'%s\', uraian=\'%s\' where kodeo=\'%s\' ';
+					$res = db_query(db_rewrite_sql($sql), array($kode, $uraian , $e_kode));
+					
+				}
+				
+			} else {
+			//drupal_set_message('no'.$no.'#');
+				$e_no = $form_state['values']['e_no_' . $x];
+				if ($iddetil!=='new') {
+
+					$sql = 'delete from {obyek} where kodeo=\'%s\'';
+					$res = db_query(db_rewrite_sql($sql), array($e_kode));
+					
+				}
+				
+			}
+			
+		
+
+		}	
+		
+		if ($res)
+			drupal_set_message('Penyimpanan Berhasil');
+		else
+			drupal_set_message('Penyimpanan Gagal');
+		$arg1=arg(1);
+		$arg2=arg(2);
+		drupal_goto('modrek/'.$arg1.'/'.$arg2);   
+	}
+	
+
+	
+	
+}
+ 
+/**
+ * Implementation of hook_theme().
+ */
+function modrek_theme() {
+    return array(
+        'modrek_form' => array(
+            'arguments' => array(
+                'form' => NULL
+            ),
+        ),
+    );
+}
+ 
+/**
+ * Theme for form_element_form. Used to create the tabledrag element and then
+ * render the rest of the form.
+ */
+function theme_modrek_form($form) {
+    $table_rows = array();
+	
+    if (is_array($form['tabledragrows'])) {
+        //loop through each "row" in the table array
+        foreach ($form['tabledragrows'] as $id => $row) {
+            //we are only interested in numeric keys
+            if (intval($id)) {
+                $this_row = array();
+				
+				//$this_row[] = drupal_render($form['tabledrag rows'][$id]['iddetil_' . $id]);
+                $this_row[] = drupal_render($form['tabledragrows'][$id]['kode_' . $id]);
+				$this_row[] = drupal_render($form['tabledragrows'][$id]['uraian_' . $id]);
+				$this_row[] = drupal_render($form['tabledragrows'][$id]['detil_' . $id]);
+				
+                //Add the weight field to the row
+				$this_row[] = drupal_render($form['tabledragrows'][$id]['e_kode_' . $id]);
+				
+ 
+                //Add the row to the array of rows
+                $table_rows[] = array('data' => $this_row);
+            }
+        }
+    }
+ 
+    //Make sure the header count matches the column count
+    //$header = array(
+     //   "Person",
+    //    "Email",
+    //    "Weight"
+    //);
+	$header = array (
+	
+				 array('data' => 'Kode',  'width' => '90px'),
+				 array('data' => 'Uraian',  'width' => '200px'),
+				 
+				 //array('data' => 'Weight'),
+				); 
+ 
+    $form['tabledragrows'] = array(
+        '#value' => theme('table', $header, $table_rows, array('id' => 'id'))
+    );
+ 
+    $output = drupal_render($form);
+ 
+    // Call add_tabledrag to add and setup the JavaScript
+    // The key thing here is the first param - the table ID
+    // and the 4th param, the class of the form item which holds the weight
+    drupal_add_tabledrag('id', 'order', 'sibling', 'weight');
+ 
+    return $output;
+}
+
+function genPrintData($aarg, $karg) {
+
+	//$aarg=arg(3);
+	//$karg=arg(4);
+	
+	if (strlen($aarg)==1) { 
+		if ($aarg=='4')
+			$title = '4. REKENING PENDAPATAN';
+		else if ($aarg=='5')
+			$title = '5. REKENING BELANJA';
+		else if ($aarg=='6')
+			$title = '6. REKENING PEMBIAYAAN';
+		
+	} else if (strlen($aarg)==2) {
+		$sql = sprintf('select uraian from {kelompok} where kodek=\'%s\'', $aarg);
+		$res = db_query($sql);
+		if ($data = db_fetch_object($res)) {
+			$title = $aarg . '. ' . $data->uraian;
+		}
+	} 
+	
+	
+    if(isset($karg) && $karg!=null){
+		$where=sprintf(' where kodej=\'%s\'',$karg);
+
+		$sql = sprintf('select uraian from {jenis} where kodej=\'%s\'', $karg);
+		$res = db_query($sql);
+		if ($data = db_fetch_object($res)) {
+			$title = $karg . ' - ' . $data->uraian;
+		}
+		
+	} else {
+		if (strlen($aarg)==1)			
+			$where=sprintf(" where kodeo like '%s%%'",$aarg.'11');
+		else
+			$where=sprintf(" where kodeo like '%s%%'",$aarg.'1');
+	}
+	
+	$rowstitle[] = array (
+						 array('data' => $title,  'width' => '535px', 'style' => ' text-align:center;font-weight:bold;'),
+						 );
+	$rowstitle[] = array (
+						 array('data' => '',  'width' => '535px', 'style' => ' text-align:center;font-weight:bold;'),
+						 );
+	
+    $sql = 'select uraian, kodeo from {obyek} ' . $where . ' order by kodeo';
+	
+	//drupal_set_message($sql.'+'.$karg.'+'.$aarg);
+	$weight = 0;
+	$headersrek[] = array (
+						 
+						 array('data' => 'KODE', 'rowspan'=>'1', 'width' => '60px', 'style' => 'border-bottom: 1px solid black; border-right: 1px solid black; border-top: 2px solid black; text-align:center;'),
+						 array('data' => 'URAIAN', 'colspan'=>'1', 'width' => '475px', 'style' => 'border-bottom: 1px solid black; border-right: 1px solid black; border-top: 2px solid black; text-align:center;'),
+						 
+
+						 );
+	$res = db_query($sql);
+	$rowsrek= array();
+	$output=null;
+	
+	if ($res) {
+		
+		while ($data = db_fetch_object($res)) {
+			$weight += 1;
+			//drupal_set_message($data->gaji);
+			
+			$rowsrek[] = array (
+								 array('data' => $data->kodeo,  'width' => '60px', 'style' => ' border-right: 1px solid black; text-align:left;font-weight:bold;'),
+								 array('data' => $data->uraian,  'width' => '475px', 'style' => ' border-right: 1px solid black; text-align:left;font-weight:bold;'),
+								 );
+			//Rincian Obyek	................		
+			$where=sprintf(' where kodeo=\'%s\'',$data->kodeo);
+			$fql = 'select uraian, kodero from {rincianobyek} '.$where . ' order by kodero';
+			
+			//drupal_set_message($sql);
+			$ref = db_query($fql);
+			$weightf = 0;
+			if ($ref) {
+				
+				while ($dataf = db_fetch_object($ref)) {
+					$weightf += 1;
+					$rowsrek[] = array (
+								 array('data' => $dataf->kodero,  'width' => '60px', 'style' => ' border-right: 1px solid black; text-align:left;'),
+								 array('data' => $dataf->uraian,  'width' => '475px', 'style' => ' border-right: 1px solid black; text-align:left;'),
+								 );
+				}
+			}
+			//END Rincian Obyek ..............
+		}
+	}
+	$opttb0 = array('cellspacing'=>'1', 'cellpadding'=>'1', 'border' => '0`');
+	$outputjudul = theme_box('', apbd_theme_table(null, $rowstitle, $opttb0));
+
+	$opttbl = array('cellspacing'=>'1', 'cellpadding'=>'1', 'border' => '1');
+	$output = theme_box('', apbd_theme_table($headersrek, $rowsrek, $opttbl));
+	
+	apbd_ExportPDF2P(20, 20, $outputjudul, $output, 'Daftar Rekening ' . $aarg . $karg . '.pdf');
+	
+	return null;
+}
+
+
+function genPrintData1($aarg) {
+
+	//$aarg=arg(3);
+	//$karg=arg(4);
+	
+	if ($aarg=='4')
+		$title = '4. REKENING PENDAPATAN';
+	else if ($aarg=='5')
+		$title = '5. REKENING BELANJA';
+	else if ($aarg=='6')
+		$title = '6. REKENING PEMBIAYAAN';
+
+	$rowstitle[] = array (
+						 array('data' => $title,  'width' => '535px', 'style' => ' text-align:center;font-weight:bold;font-weight:bold;font-size:125%;'),
+						 );
+	$rowstitle[] = array (
+						 array('data' => '',  'width' => '535px', 'style' => ' text-align:center;font-weight:bold;'),
+						 );	
+
+	$headersrek[] = array (
+						 array('data' => 'KODE', 'rowspan'=>'1', 'width' => '60px', 'style' => 'border-bottom: 1px solid black; border-right: 1px solid black; border-top: 2px solid black; text-align:center;'),
+						 array('data' => 'URAIAN', 'colspan'=>'1', 'width' => '475px', 'style' => 'border-bottom: 1px solid black; border-right: 1px solid black; border-top: 2px solid black; text-align:center;'),
+					 );
+	
+	//KELOMPOK
+	$rowsrek= array();
+	$output=null;
+
+	$rowsrek[] = array (
+				 array('data' => '',  'width' => '60px', 'style' => ' border-right: 1px solid black; text-align:left;font-size:50%;'),
+				 array('data' => '',  'width' => '475px', 'style' => ' border-right: 1px solid black; text-align:left;font-size:50%;'),
+				 );
+	
+	$sql = sprintf('select kodek, uraian from {kelompok} where kodea=\'%s\'', $aarg);
+	$res_kel = db_query($sql);
+	while ($data_kel = db_fetch_object($res_kel)) {
+		$rowsrek[] = array (
+						array('data' => $data_kel->kodek,  'width' => '60px', 'style' => ' border-right: 1px solid black; text-align:left;font-weight:bold;'),
+						array('data' => $data_kel->uraian,  'width' => '475px', 'style' => ' border-right: 1px solid black; text-align:left;font-weight:bold;font-size:125%;'),
+				);
+					
+		//Jenis
+		$sql = sprintf('select kodej, uraian from {jenis} where kodek=\'%s\' order by kodej', $data_kel->kodek);
+		$res_jen = db_query($sql);
+		while ($data_jen = db_fetch_object($res_jen)) {
+			$rowsrek[] = array (
+						 array('data' => '',  'width' => '60px', 'style' => ' border-right: 1px solid black; text-align:left;font-size:50%;'),
+						 array('data' => '',  'width' => '475px', 'style' => ' border-right: 1px solid black; text-align:left;font-size:50%;'),
+						 );
+			
+			$rowsrek[] = array (
+							array('data' => $data_jen->kodej,  'width' => '60px', 'style' => ' border-right: 1px solid black; text-align:left;font-weight:bold;'),
+							array('data' => $data_jen->uraian,  'width' => '475px', 'style' => ' border-right: 1px solid black; text-align:left;font-weight:bold;'),
+					);
+
+				//Obyek
+				$sql = sprintf('select kodeo, uraian from {obyek} where kodej=\'%s\' order by kodeo', $data_jen->kodej);
+				$res = db_query($sql);
+				
+				if ($res) {
+					while ($data = db_fetch_object($res)) {
+						//drupal_set_message($data->gaji);
+						
+						$rowsrek[] = array (
+											 array('data' => $data->kodeo,  'width' => '60px', 'style' => ' border-right: 1px solid black; text-align:left;font-weight:bold;'),
+											 array('data' => $data->uraian,  'width' => '475px', 'style' => ' border-right: 1px solid black; text-align:left;font-weight:bold;'),
+											 );
+						//Rincian Obyek	................		
+						$where=sprintf(' where kodeo=\'%s\'',$data->kodeo);
+						$fql = 'select uraian, kodero from {rincianobyek} '.$where . ' order by kodero';
+						
+						//drupal_set_message($sql);
+						$ref = db_query($fql);
+						if ($ref) {
+							while ($dataf = db_fetch_object($ref)) {
+								$rowsrek[] = array (
+											 array('data' => $dataf->kodero,  'width' => '60px', 'style' => ' border-right: 1px solid black; text-align:left;'),
+											 array('data' => $dataf->uraian,  'width' => '475px', 'style' => ' border-right: 1px solid black; text-align:left;'),
+											 );
+							}
+						}
+						//END Rincian Obyek ..............
+					}
+				}	//obyek				
+			
+		}	//jenis
+		$rowsrek[] = array (
+					 array('data' => '',  'width' => '60px', 'style' => ' border-right: 1px solid black; text-align:left;'),
+					 array('data' => '',  'width' => '475px', 'style' => ' border-right: 1px solid black; text-align:left;'),
+					 );
+		
+	}	//kelompok
+	
+
+	$opttb0 = array('cellspacing'=>'1', 'cellpadding'=>'1', 'border' => '0`');
+	$outputjudul = theme_box('', apbd_theme_table(null, $rowstitle, $opttb0));
+
+	$opttbl = array('cellspacing'=>'1', 'cellpadding'=>'1', 'border' => '1');
+	$output = theme_box('', apbd_theme_table($headersrek, $rowsrek, $opttbl));
+	
+	apbd_ExportPDF2P(20, 20, $outputjudul, $output, 'Daftar Rekening ' . $aarg . $karg . '.pdf');
+	
+	return null;
+}
+
+function genPrintData2($aarg) {
+
+	//$aarg=arg(3);
+	//$karg=arg(4);
+	
+	$sql = sprintf('select uraian from {kelompok} where kodek=\'%s\'', $aarg);
+	$res = db_query($sql);
+	if ($data = db_fetch_object($res)) {
+		$title = $aarg . '. ' . $data->uraian;
+	}
+
+
+	$rowstitle[] = array (
+						 array('data' => $title,  'width' => '535px', 'style' => ' text-align:center;font-weight:bold;font-weight:bold;font-size:125%;'),
+						 );
+	$rowstitle[] = array (
+						 array('data' => '',  'width' => '535px', 'style' => ' text-align:center;font-weight:bold;'),
+						 );	
+
+	$headersrek[] = array (
+						 array('data' => 'KODE', 'rowspan'=>'1', 'width' => '60px', 'style' => 'border-bottom: 1px solid black; border-right: 1px solid black; border-top: 2px solid black; text-align:center;'),
+						 array('data' => 'URAIAN', 'colspan'=>'1', 'width' => '475px', 'style' => 'border-bottom: 1px solid black; border-right: 1px solid black; border-top: 2px solid black; text-align:center;'),
+					 );
+	
+	//KELOMPOK
+	$rowsrek= array();
+	$output=null;
+
+	//Jenis
+	$sql = sprintf('select kodej, uraian from {jenis} where kodek=\'%s\'  order by kodej', $aarg);
+	$res_jen = db_query($sql);
+	while ($data_jen = db_fetch_object($res_jen)) {
+		$rowsrek[] = array (
+					 array('data' => '',  'width' => '60px', 'style' => ' border-right: 1px solid black; text-align:left;font-size:50%;'),
+					 array('data' => '',  'width' => '475px', 'style' => ' border-right: 1px solid black; text-align:left;font-size:50%;'),
+					 );
+		
+		$rowsrek[] = array (
+						array('data' => $data_jen->kodej,  'width' => '60px', 'style' => ' border-right: 1px solid black; text-align:left;font-weight:bold;'),
+						array('data' => $data_jen->uraian,  'width' => '475px', 'style' => ' border-right: 1px solid black; text-align:left;font-weight:bold;'),
+				);
+
+			//Obyek
+			$sql = sprintf('select kodeo, uraian from {obyek} where kodej=\'%s\'  order by kodeo', $data_jen->kodej);
+			$res = db_query($sql);
+			
+			if ($res) {
+				while ($data = db_fetch_object($res)) {
+					//drupal_set_message($data->gaji);
+					
+					$rowsrek[] = array (
+										 array('data' => $data->kodeo,  'width' => '60px', 'style' => ' border-right: 1px solid black; text-align:left;font-weight:bold;'),
+										 array('data' => $data->uraian,  'width' => '475px', 'style' => ' border-right: 1px solid black; text-align:left;font-weight:bold;'),
+										 );
+					//Rincian Obyek	................		
+					$where=sprintf(' where kodeo=\'%s\'',$data->kodeo);
+					$fql = 'select uraian, kodero from {rincianobyek} '.$where . ' order by kodero';
+					
+					//drupal_set_message($sql);
+					$ref = db_query($fql);
+					if ($ref) {
+						while ($dataf = db_fetch_object($ref)) {
+							$rowsrek[] = array (
+										 array('data' => $dataf->kodero,  'width' => '60px', 'style' => ' border-right: 1px solid black; text-align:left;'),
+										 array('data' => $dataf->uraian,  'width' => '475px', 'style' => ' border-right: 1px solid black; text-align:left;'),
+										 );
+						}
+					}
+					//END Rincian Obyek ..............
+				}
+			}	//obyek				
+		
+	}	//jenis
+	
+
+	$opttb0 = array('cellspacing'=>'1', 'cellpadding'=>'1', 'border' => '0`');
+	$outputjudul = theme_box('', apbd_theme_table(null, $rowstitle, $opttb0));
+
+	$opttbl = array('cellspacing'=>'1', 'cellpadding'=>'1', 'border' => '1');
+	$output = theme_box('', apbd_theme_table($headersrek, $rowsrek, $opttbl));
+	
+	apbd_ExportPDF2P(20, 20, $outputjudul, $output, 'Daftar Rekening ' . $aarg . $karg . '.pdf');
+	
+	return null;
+}
+
+
+	

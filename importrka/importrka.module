@@ -1,0 +1,76 @@
+<?php
+
+function importrka_perm() {
+    return array(
+        'import rka skpd',
+	);
+}
+
+function importrka_menu() {
+    $items['importrkalalu/pilihkegiatan'] = array (
+      'title' => 'Import RKA-SKPD Tahun Sebelumnya',
+	  'description' => 'Import RKA-SKPD Tahun Sebelumnya',
+	  'title callback' => 'importrkalalu_title_callback',	  
+      'page callback' => 'importrkalalu_main',
+      'access arguments' => array ('import rka skpd'),
+      'weight' => 1,
+      'file' => 'importrkalalu_main.php',
+      'type' => MENU_NORMAL_ITEM,
+    );
+    $items['importrkalalu/importrka'] = array (
+      'title' => 'Import RKA-SKPD',
+      'page callback' => 'drupal_get_form',
+      'page arguments' => array('importrkalalu_post_form'),
+      'access arguments' => array ('import rka skpd'),
+      'file' => 'importrkalalu_post_form.php',
+      'type' => MENU_CALLBACK,
+    );
+	
+    $items['importrka/pilihkegiatan'] = array (
+      'title' => 'Import RKA-SKPD',
+	  'description' => 'Import RKA-SKPD',
+	  'title callback' => 'importrka_title_callback',	  
+      'page callback' => 'importrka_main',
+      'access arguments' => array ('import rka skpd'),
+      'weight' => 1,
+      'file' => 'importrka_main.php',
+      'type' => MENU_NORMAL_ITEM,
+    );
+    $items['importrka/importrka'] = array (
+      'title' => 'Import RKA-SKPD',
+      'page callback' => 'drupal_get_form',
+      'page arguments' => array('importrka_post_form'),
+      'access arguments' => array ('import rka skpd'),
+      'file' => 'importrka_post_form.php',
+      'type' => MENU_CALLBACK,
+    );
+
+    $items['importpendapatan/pilihrekening'] = array (
+      'title' => 'Import RKA-SKPD',
+	  'description' => 'Import RKA-SKPD',
+	  'title callback' => 'importrka_title_callback',	  
+      'page callback' => 'importpendapatan_main',
+      'access arguments' => array ('import rka skpd'),
+      'weight' => 1,
+      'file' => 'importpendapatan_main.php',
+      'type' => MENU_NORMAL_ITEM,
+    );
+    $items['importpendapatan/importrka'] = array (
+      'title' => 'Import RKA-SKPD',
+      'page callback' => 'drupal_get_form',
+      'page arguments' => array('importpendapatan_post_form'),
+      'access arguments' => array ('import rka skpd'),
+      'file' => 'importpendapatan_post_form.php',
+      'type' => MENU_CALLBACK,
+    );
+	
+	return $items;
+}	
+
+function importrkalalu_title_callback() {
+    return t('Import RKA-SKPD Tahun Sebelumnya');
+}
+
+function importrka_title_callback() {
+    return t('Import RKA-SKPD');
+}

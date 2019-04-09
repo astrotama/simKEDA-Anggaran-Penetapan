@@ -1,0 +1,2 @@
+update kegiatanskpd inner join q_kegiatananggaran on kegiatanskpd.kodekeg=q_kegiatananggaran.kodekeg set kegiatanskpd.total=q_kegiatananggaran.total
+where kegiatanskpd.inaktif=0

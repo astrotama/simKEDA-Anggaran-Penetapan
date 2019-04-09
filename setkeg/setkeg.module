@@ -1,0 +1,31 @@
+<?php
+
+function setkeg_perm() {
+    return array(
+		'setkeg access',
+        'setkeg kegiatan'
+	);
+}
+
+function setkeg_menu() {
+
+    $items['setkeg'] = array (
+      'title' => 'Admin APBD',
+      'page callback' => 'drupal_get_form',
+      'page arguments' => array('setkeg_form'),
+      'access arguments' => array ('setkeg kegiatan'),
+      'file' => 'setkeg_form.php',
+      'type' => MENU_CALLBACK,
+    );
+	$items['anggperkegnol'] = array (
+      'title' => 'Hapus Anggperkeg Nol',
+      'page callback' => 'anggperkegnol_main',
+      //'page arguments' => array('anggperkegnol_form'),
+      'access arguments' => array ('setkeg kegiatan'),
+      'file' => 'anggperkegnol_form.php',
+      'type' => MENU_CALLBACK,
+    );
+
+
+    return $items;
+}

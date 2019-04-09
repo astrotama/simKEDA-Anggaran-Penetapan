@@ -1,0 +1,6 @@
+; $Id$
+name = "Import RKA-SKPD"
+description = "Import RKA-SKPD"
+;dependencies[] = 
+core = 6.x
+package="APBD R1"

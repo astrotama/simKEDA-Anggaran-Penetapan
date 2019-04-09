@@ -1,0 +1,18 @@
+delete from dpanomor3;
+
+insert into dpanomor3 (kodeuk) select kodeuk from kegiatanperubahan where periode=4;
+update dpanomor3 set blok = 1 where kodeuk in (select kodeuk from kegiatanperubahan where periode=4 and jenis=2);
+update dpanomor3 set btlok = 1 where kodeuk in (select kodeuk from kegiatanperubahan where periode=4 and jenis=1);
+
+delete from kegiatandpa3;
+insert into kegiatandpa3 (kodekeg, dpano, dpatgl)
+select k.kodekeg, concat(d.btlno, '-PR/BTL/', u.kodedinas, '.', k.kodepro, '.', substr(k.kodekeg,-3), '/2018') dpano, d.btltgl dpatanggal
+from dpanomor3 d inner join kegiatanperubahan k 
+on d.kodeuk=k.kodeuk inner join unitkerja u on k.kodeuk=u.kodeuk where k.jenis=1
+and k.periode=4;
+
+insert into kegiatandpa3 (kodekeg, dpano, dpatgl)
+select k.kodekeg, concat(d.blno, '-PR/BTL/', u.kodedinas, '.', k.kodepro, '.', substr(k.kodekeg,-3), '/2018') dpano, d.bltgl dpatanggal
+from dpanomor3 d inner join kegiatanperubahan k 
+on d.kodeuk=k.kodeuk inner join unitkerja u on k.kodeuk=u.kodeuk where k.jenis=2
+and k.periode=4
