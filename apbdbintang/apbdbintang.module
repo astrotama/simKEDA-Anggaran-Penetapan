@@ -1,0 +1,461 @@
+<?php
+ 
+/**
+ * For more informaiton about the different API controls available see:
+ * http://api.drupal.org/api/drupal/developer--topics--forms_api_reference.html/6
+ */
+ 
+function apbdbintang_menu() {
+    $items['apbdbintang'] = array(
+        'title' => 'Rekening Bintang',
+        'page callback' => 'drupal_get_form',
+        'page arguments' => array('apbdbintang_form'),
+        'access callback' => TRUE,
+    );
+    $items['apbdbintanglist/delete'] = array(
+        'title' => 'Hapus Rekening Bintang',
+        'page callback' => 'drupal_get_form',
+        'page arguments' => array('apbdbintang_delete_form'),
+        'access callback' => TRUE,
+		'file' => 'apbdbintang_delete_form.php',
+		'type' => MENU_NORMAL_ITEM,
+		
+    );
+
+    $items['apbdbintangpost'] = array(
+        'title' => 'Rekening Bintang',
+        'page callback' => 'drupal_get_form',
+        'page arguments' => array('apbdbintang_post_form'),
+        'access callback' => TRUE,
+		'file' => 'apbdbintang_post_form.php',
+		'type' => MENU_NORMAL_ITEM,
+    );
+	
+    $items['apbdbintanglist'] = array (
+		'title' => 'Rekening Bintang',
+		'description' => 'Rekening Bintang',
+		//'title callback' => 'unitkerja_title_callback',	  
+		'page callback' => 'apbdbintanglist_main',
+		'access arguments' => array ('unitkerja access'),
+		'weight' => 2,
+		'file' => 'apbdbintanglist_main.php',
+		'type' => MENU_NORMAL_ITEM,
+    );	
+    return $items;
+}
+ 
+/**
+ * This is form containing every form element type available.
+ */
+function apbdbintang_form() {
+	drupal_add_css('files/css/kegiatancam.css');
+	//drupal_add_js('files/js/kegiatanpb.js');
+	drupal_add_js('files/js/kegiatancam.js');
+	
+	$kodero = arg(1);
+	//drupal_set_message($kodero);
+
+	//FILTER TAHUN-----
+    $tahun = variable_get('apbdtahun', 0);
+
+	$title = 'Rekening Bintang';
+
+	//$title =l($title, 'apbd/kegiatanskpd/rekening/' . $kodeuk, array('html'=>true));
+	drupal_set_title($title);
+	drupal_set_html_head('<style>label{font-weight: bold; display: block; width: 200px; float: left;}</style>');
+    $disabled = FALSE;
+	
+	$persen = 50;
+    if (isset($kodero))
+    {
+        if (!user_access('kegiatanrkpd edit'))
+            drupal_access_denied();
+			
+        $sql = 'select r.kodero,r.uraian,b.persen,b.kodeuk1,b.kodeuk1persen,b.kodeuk2,b.kodeuk2persen, b.kodekeg1,b.kodekeg1persen,b.kodekeg2,b.kodekeg2persen from {rincianobyek} r inner join {rekeningbintang} b on r.kodero=b.kodero where r.kodero=\'%s\'';
+        $res = db_query(db_rewrite_sql($sql), array ($kodero));
+        if ($res) {
+            $data = db_fetch_object($res);
+			if ($data) {
+                
+				$kodero = $data->kodero;
+				$uraian = $data->uraian;
+				$persen = $data->persen;
+				
+				$kodeuk1  = $data->kodeuk1;
+				$kodeuk1persen = $data->kodeuk1persen;
+				$kodeuk2 = $data->kodeuk2;
+				$kodeuk2persen = $data->kodeuk2persen;
+				
+				$kodekeg1 = $data->kodekeg1;
+				$kodekeg1persen = $data->kodekeg1persen;
+				
+				$kodekeg2 = $data->kodekeg2;
+				$kodekeg2persen = $data->kodekeg2persen;
+				
+			} else {
+				$kodero = '';
+			}
+        } else {
+			$kodero = '';
+		}
+    } else {
+		if (!user_access('kegiatanrkpd tambah'))
+			drupal_access_denied();
+		$form['formdata']['#title'] = 'Tambah Rekening Bintang';
+		$kodero = '';
+	}
+    
+	$form['nk']= array(
+		'#type'         => 'hidden', 
+		'#title'        => 'kodero', 
+		'#default_value'=> $kodero, 
+	); 
+	$form['e_kodero']= array(
+		'#type'         => 'hidden', 
+		'#title'        => 'kodero', 
+		'#default_value'=> $kodero, 
+	); 
+
+	$form['kegiatan']= array(
+		'#type'         => 'textfield', 
+		'#title'        => 'Rekening', 
+		//'#description'  => 'uraian', 
+		'#maxlength'    => 255, 
+		'#size'         => 98, 
+		'#size'         => 98, 
+		//'#required'     => !$disabled, 
+		//'#disabled'     => $disabled, 
+		'#default_value'=> $uraian, 
+		//'#weight' => -5,
+	); 
+	$form['keterangan'] = array (
+		'#type' => 'markup',
+		'#value' => "<span><font size='1'>Isi rekening dengan memilih menggunakan tombol Pilih</font></span>",
+		//'#weight' => -4,
+	);	 
+	$form['persen']= array(
+		'#type'         => 'textfield', 
+		'#title'        => 'Persen Bintang',
+		'#attributes'	=> array('style' => 'text-align: right'),
+		//'#disabled'     => true, 
+		//'#description'  => 'Jumlah anggaran pembiayaan, akan terisi saat detil rekening diisikan',
+		//'#maxlength'    => 60, 
+		'#size'         => 30, 
+		//'#required'     => !$disabled, 
+		//'#disabled'     => $disabled, 
+		'#default_value'=> $persen, 
+		//'#weight' => -3,
+	); 
+
+	$pquery = "select kodeuk, namasingkat from {unitkerja} where aktif=1 order by namauk" ;
+	$pres = db_query($pquery);
+	$skpd = array();
+	$skpd[''] = '-PILIH SKPD-';
+	while ($data = db_fetch_object($pres)) {
+		$skpd[$data->kodeuk] = $data->namasingkat;
+	}	 
+	//UK1
+	$form['UK1'] = array (
+		'#type' => 'fieldset',
+		'#title'=> 'Pengecualian SKPD #1',
+		'#collapsible' => true,
+		'#collapsed' => false,        
+	);
+	
+	$form['UK1']['kodeuk1']= array(
+		'#type'         => 'select', 
+		'#title'        => 'SKPD', 
+		'#options'		=> $skpd,
+		//'#disabled'     => true, 
+		'#default_value'=> $kodeuk1, 
+	);  
+	$form['UK1']['kodeuk1persen']= array(
+		'#type'         => 'textfield', 
+		'#title'        => 'Persen',
+		'#attributes'	=> array('style' => 'text-align: right'),
+		'#size'         => 30, 
+		//'#disabled'     => true, 
+		'#default_value'=> $kodeuk1persen, 
+	); 	
+
+	//UK2
+	$form['UK2'] = array (
+		'#type' => 'fieldset',
+		'#title'=> 'Pengecualian SKPD #2',
+		'#collapsible' => true,
+		'#collapsed' => true,        
+	);
+	
+	$form['UK2']['kodeuk2']= array(
+		'#type'         => 'select', 
+		'#title'        => 'SKPD', 
+		'#options'		=> $skpd,
+		//'#disabled'     => true, 
+		'#default_value'=> $kodeuk2, 
+	);  
+	$form['UK2']['kodeuk2persen']= array(
+		'#type'         => 'textfield', 
+		'#title'        => 'Persen',
+		'#attributes'	=> array('style' => 'text-align: right'),
+		'#size'         => 30, 
+		//'#disabled'     => true, 
+		'#default_value'=> $kodeuk2persen, 
+	); 		
+	
+	//kodekeg1
+	$form['kegiatan1'] = array (
+		'#type' => 'fieldset',
+		'#title'=> 'Pengecualian Kegiatan #1',
+		'#collapsible' => true,
+		'#collapsed' => false,        
+	);
+	
+	$form['kegiatan1']['kodekeg1']= array(
+		'#type'         => 'textfield', 
+		'#title'        => 'Kegiatan', 
+		'#size'         => 30, 
+		//'#disabled'     => true, 
+		'#default_value'=> $kodekeg1, 
+	);  
+	$form['kegiatan1']['kodekeg1persen']= array(
+		'#type'         => 'textfield', 
+		'#title'        => 'Persen',
+		'#attributes'	=> array('style' => 'text-align: right'),
+		'#size'         => 30, 
+		//'#disabled'     => true, 
+		'#default_value'=> $kodekeg1persen, 
+	); 	
+	
+	//kodekeg2
+	$form['kegiatan2'] = array (
+		'#type' => 'fieldset',
+		'#title'=> 'Pengecualian Kegiatan #2',
+		'#collapsible' => true,
+		'#collapsed' => true,        
+	);
+	
+	$form['kegiatan2']['kodekeg2']= array(
+		'#type'         => 'textfield', 
+		'#title'        => 'Kegiatan', 
+		'#size'         => 30, 
+		//'#disabled'     => true, 
+		'#default_value'=> $kodekeg2, 
+	);  
+	$form['kegiatan2']['kodekeg2persen']= array(
+		'#type'         => 'textfield', 
+		'#title'        => 'Persen',
+		'#attributes'	=> array('style' => 'text-align: right'),
+		'#size'         => 30, 
+		//'#disabled'     => true, 
+		'#default_value'=> $kodekeg2persen, 
+	); 	
+	
+    // A submit element
+    $form['submit'] = array(
+        '#type' => 'submit',
+		'#suffix' => "&nbsp;<a href='/apbdbintanglist' class='btn_blue' style='color: white'>Tutup</a>",
+        '#value' => 'Simpan',
+		//'#weight' => 7,
+    );
+ 
+    return $form;
+}
+
+/**
+ * Implements hook_validate() for the apbdbintang_form() form.
+ */
+function apbdbintang_form_validate($form, &$form_state) {
+	$kodero = $form_state['values']['nk'];
+	$sql = 'select kodero from {rekeningbintang} where kodero=\'%s\'';
+	$res = db_query(db_rewrite_sql($sql), array ($kodero));
+	if ($res) {
+		if ($data = db_fetch_object($res)) {
+			form_set_error('nk', 'Rekening sudah dibintang' );
+			
+		};
+	}
+} 
+/**
+ * Implements hook_submit() for the apbdbintang_form() form.
+ */
+function apbdbintang_form_submit($form, &$form_state) {
+    
+	$e_kodero = $form_state['values']['e_kodero'];			
+
+	$kodero = $form_state['values']['nk'];
+	$persen = $form_state['values']['persen'];
+
+	$kodeuk1 = $form_state['values']['kodeuk1'];
+	$kodeuk1persen = $form_state['values']['kodeuk1persen'];
+	$kodeuk2 = $form_state['values']['kodeuk2'];
+	$kodeuk2persen = $form_state['values']['kodeuk2persen'];
+
+	$kodekeg1 = $form_state['values']['kodekeg1'];
+	$kodekeg1persen = $form_state['values']['kodekeg1persen'];
+	$kodekeg2 = $form_state['values']['kodekeg2'];
+	$kodekeg2persen = $form_state['values']['kodekeg2persen'];
+	
+	if ($e_kodero=='') {
+		$sql = 'insert into {rekeningbintang} (kodero,persen,kodeuk1,kodeuk1persen,kodeuk2,kodeuk2persen, kodekeg1,kodekeg1persen,kodekeg2,kodekeg2persen) values (\'%s\', \'%s\',\'%s\', \'%s\',\'%s\', \'%s\',\'%s\', \'%s\',\'%s\', \'%s\')';        
+		$res = db_query(db_rewrite_sql($sql), array($kodero, $persen,$kodeuk1,$kodeuk1persen,$kodeuk2,$kodeuk2persen, $kodekeg1,$kodekeg1persen,$kodekeg2,$kodekeg2persen));
+		
+		
+
+		$sql = 'select a.kodekeg,a.jumlah,k.kodeuk,k.sumberdana1 from {anggperkeg} a inner join {kegiatanskpd} k on a.kodekeg=k.kodekeg where a.kodero=\'%s\' and k.sumberdana1<>\'%s\' and k.sumberdana1<>\'%s\' and a.bintang=0';
+		$res = db_query(db_rewrite_sql($sql), array ($kodero, 'DAK', 'DBHCHT'));
+		if ($res) {
+			while ($data = db_fetch_object($res)) {
+				
+				if ($data->kodekeg==$kodekeg1) {
+					$total_bintang = ($kodekeg1persen/100) * $data->jumlah;
+					$persenstr = $kodekeg1persen;
+				} else if ($data->kodekeg==$kodekeg2) {
+					$total_bintang = ($kodekeg2persen/100) * $data->jumlah;
+					$persenstr = $kodekeg2persen;
+				} else if ($data->kodeuk==$kodeuk1) {
+					$total_bintang = ($kodeuk1persen/100) * $data->jumlah;
+					$persenstr = $kodeuk1persen;
+				} else if ($data->kodeuk==$kodeuk2) {
+					$total_bintang = ($kodeuk2persen/100) * $data->jumlah;
+					$persenstr = $kodeuk2persen;
+				} else {
+					$total_bintang = ($persen/100) * $data->jumlah;
+					$persenstr = $persen;
+				} 
+				
+				if ($total_bintang>0) {
+					//drupal_set_message($data->kodekeg);
+					$total_bintang = -$total_bintang;
+					$sql = 'insert into {anggperkegdetil} (kodekeg, kodero, nourut, uraian, unitjumlah, unitsatuan, volumjumlah, volumsatuan, harga, total, pengelompokan, anggaran, bintangjenis) 
+							values(\'%s\', \'%s\', \'%s\', \'%s\', \'%s\', \'%s\', \'%s\', \'%s\', \'%s\', \'%s\', \'%s\', \'%s\', \'%s\')';        
+					$res_x = db_query(db_rewrite_sql($sql), array($data->kodekeg, $kodero, 9999, 'Penundaan rekening sebesar ' . $persenstr . '%', '1', '', '1', '', $total_bintang, $total_bintang, '0', '0', '1'));	
+				}
+				
+			};
+		}
+
+		if ($res)
+			drupal_set_message('Penyimpanan data berhasil dilakukan');
+		else
+			drupal_set_message('Penyimpanan data tidak berhasil dilakukan');
+		drupal_goto('apbdbintanglist');    
+		
+	} else {
+		//$sql = 'update {rekeningbintang} set persen=\'%s\' where kodero=\'%s\'';
+		//$res = db_query(db_rewrite_sql($sql), array($persen, $e_kodero));
+		drupal_set_message('Editing tidak bisa dilakukan, bila ada perubahan harus dihapus lalu di-input ulang');
+	}
+		
+
+
+	
+}
+
+function set_rek_bintang() {
+
+	$res = db_query('DELETE FROM {anggperkegdetil} WHERE bintangjenis=1 and nourut=9999 and total<0');
+	
+	drupal_set_message($res);
+	
+	$resrek = db_query('select kodero,persen,kodeuk1,kodeuk1persen,kodeuk2,kodeuk2persen,kodekeg1,kodekeg1persen,kodekeg2,kodekeg2persen from {rekeningbintang}');
+	if ($resrek) {
+		
+		while ($datarek = db_fetch_object($resrek)) {
+			
+			drupal_set_message($datarek->kodero);
+			
+			$sql = 'select a.kodekeg,a.jumlah,k.kodeuk,k.sumberdana1 from {anggperkeg} a inner join {kegiatanskpd} k on a.kodekeg=k.kodekeg where a.kodero=\'%s\' and k.sumberdana1<>\'%s\' and k.sumberdana1<>\'%s\' and a.bintang=0';
+			$res = db_query(db_rewrite_sql($sql), array ($datarek->kodero, 'DAK', 'DBHCHT'));
+			if ($res) {
+				while ($data = db_fetch_object($res)) {
+					
+					$total_bintang = 0;
+					if ($data->kodekeg==$datarek->kodekeg1) {
+						$total_bintang = ($datarek->kodekeg1persen/100) * $data->jumlah;
+						$persenstr = $datarek->kodekeg1persen;
+						
+					} else if ($data->kodekeg==$datarek->kodekeg2) {
+						$total_bintang = ($datarek->kodekeg2persen/100) * $data->jumlah;
+						$persenstr = $datarek->kodekeg2persen;
+						
+					} else if ($data->kodeuk==$datarek->kodeuk1) {
+						$total_bintang = ($datarek->kodeuk1persen/100) * $data->jumlah;
+						$persenstr = $datarek->kodeuk1persen;
+						
+					} else if ($data->kodeuk==$datarek->kodeuk2) {
+						$total_bintang = ($datarek->kodeuk2persen/100) * $data->jumlah;
+						$persenstr = $datarek->kodeuk2persen;
+						
+					} else {
+						$total_bintang = ($datarek->persen/100) * $data->jumlah;
+						$persenstr = $datarek->persen;
+					} 
+					
+					drupal_set_message($total_bintang);
+					
+					if ($total_bintang>0) {
+						drupal_set_message($data->kodekeg);
+						$total_bintang = -$total_bintang;
+						$sql = 'insert into {anggperkegdetil} (kodekeg, kodero, nourut, uraian, unitjumlah, unitsatuan, volumjumlah, volumsatuan, harga, total, pengelompokan, anggaran, bintangjenis) 
+								values(\'%s\', \'%s\', \'%s\', \'%s\', \'%s\', \'%s\', \'%s\', \'%s\', \'%s\', \'%s\', \'%s\', \'%s\', \'%s\')';        
+						$res_x = db_query(db_rewrite_sql($sql), array($data->kodekeg, $datarek->kodero, 9999, 'Penundaan rekening sebesar ' . $persenstr . '%', '1', '', '1', '', $total_bintang, $total_bintang, '0', '0', '1'));	
+					}
+					
+				};
+			}
+		}		
+	}
+}	
+
+function apbdbintang_anggaran_tunda_uk($kodeuk) {
+	set_time_limit(0);
+	ini_set('memory_limit', '512');
+	
+	$where = sprintf(" and a.kodekeg in (select kodekeg from {kegiatanskpd} where kodeuk='%s'", $kodeuk);	
+
+	
+	//Rekening
+	$sql = 'select distinct a.kodekeg,a.kodero from {anggperkeg} a inner join {anggperkegdetil} d on a.kodekeg=d.kodekeg and a.kodero=d.kodero where d.total<0 and a.anggaran>0 ' . $where . ' order by a.kodekeg,a.kodero';
+	
+	drupal_set_message($sql);
+	
+	$res = db_query($sql);
+	while ($data = db_fetch_object($res)) {
+		
+		drupal_set_message($data->kodekeg . ', ' . $data->kodero);
+		
+        $sql = 'select sum(total) as totalanggaran from {anggperkegdetil} where kodekeg=\'%s\' and kodero=\'%s\'';
+        $res_rek = db_query(db_rewrite_sql($sql), array($data->kodekeg, $data->kodero));
+            if ($data_rek = db_fetch_object($res_rek)) {
+				
+				
+				$sql = 'update {anggperkeg} set anggaran=\'%s\' where anggaran>0 and kodekeg=\'%s\' and kodero=\'%s\'';
+				$res_x = db_query(db_rewrite_sql($sql), array($data_rek->totalanggaran, $data->kodekeg, $data->kodero));			
+				
+				
+			}
+			
+	}	
+	
+	//Kegiatan
+	$sql = 'select distinct a.kodekeg from {anggperkeg} a inner join {anggperkegdetil} d on a.kodekeg=d.kodekeg where d.total<0 and a.anggaran>0'  . $where . ' order by a.kodekeg';
+	$res = db_query($sql);
+	while ($data = db_fetch_object($res)) {
+		
+		
+		drupal_set_message($data->kodekeg);
+		
+        $sql = 'select sum(anggaran) as totalanggaran from {anggperkeg} where kodekeg=\'%s\'';
+        $res_rek = db_query(db_rewrite_sql($sql), array($data->kodekeg));
+            if ($data_rek = db_fetch_object($res_rek)) {
+
+				$sql = 'update {kegiatanskpd} set anggaran=\'%s\' where anggaran>0 and kodekeg=\'%s\'';
+				$res_x = db_query(db_rewrite_sql($sql), array($data_rek->totalanggaran, $data->kodekeg));			
+            
+			}
+			
+	}	
+	
+	drupal_set_message('Tunda ' . $step .  ' selesai');
+}	
+
